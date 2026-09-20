@@ -11,15 +11,28 @@ leverage multiple across everything you hold.
 Copilot Money has no public API. This project uses
 [`copilot-money-mcp`](https://github.com/ignaciohermosillacornejo/copilot-money-mcp)
 (MIT-licensed, independent, not affiliated with Copilot Money) in its
-**default, cache-only mode**: it reads the local LevelDB cache the Copilot
-Money Mac app already writes to disk during normal use —
-**zero network requests, no login, no captured tokens.** That cache only
-exists on your Mac, so the job has to run there too — it can't run in
-GitHub Actions or any other cloud runner. There is no credential or secret
-involved in reading your holdings at all.
+**`--live-reads` mode**: real-time reads via Copilot's own GraphQL API,
+authenticated using the Firebase session from a browser already logged in
+to app.copilot.money on your Mac. No manual token capture, no credentials
+handled by this project's code — `copilot-money-mcp` reads the session
+itself from your browser's local storage.
 
-The only network call this project makes is the one at the very end:
-sending the email via Gmail SMTP.
+That login only exists on your Mac, so the job has to run there too — it
+can't run in GitHub Actions or any other cloud runner.
+
+**Why not the tool's default cache-only mode** (which would be zero
+network requests, not even this)? Because on this database, its local
+decoder doesn't recognize the `securities` or `transactions` collections
+at all — confirmed via its own `get_cache_info` diagnostic, which showed
+0 documents decoded for either, not attempted at all — so every holding's
+ticker symbol came back empty no matter what Copilot itself had synced.
+`--live-reads` sidesteps that local-decode bug entirely. If you hit this
+tool's decode issue too, consider filing it at
+[its issue tracker](https://github.com/ignaciohermosillacornejo/copilot-money-mcp/issues)
+with your own `get_cache_info` output as evidence.
+
+The only other network call this project makes is the one at the very
+end: sending the email via Gmail SMTP.
 
 Your holdings data never passes through an AI model as part of the
 recurring job. The script talks to `copilot-money-mcp` directly over the
@@ -66,19 +79,21 @@ needed.
    password). `GMAIL_USER` is the full Gmail address that password
    belongs to.
 
-3. **Make sure Copilot Money has cached your investment data.** Open the
-   Copilot Money app on your Mac and browse to the Investments tab — this
-   ensures your holdings are fetched and cached locally. The first
-   `npm install` also pulls down `copilot-money-mcp`, which is what reads
-   that cache.
+3. **Log in to Copilot Money in a browser on this Mac**, at
+   app.copilot.money — Chrome, Arc, Edge, Brave, Vivaldi, Chromium, Opera,
+   Safari, and Firefox are all supported. `copilot-money-mcp` reads that
+   session to make live, authenticated reads; the desktop app alone isn't
+   enough for `--live-reads` mode. The first `npm install` also pulls down
+   `copilot-money-mcp` itself.
 
 4. **Test it:**
    ```
    npm start
    ```
    This should print your positions and blended leverage to the console
-   and send you the email. If it says "Database not available", open the
-   Copilot Money app and let it sync, then try again.
+   and send you the email. If it says you're not logged in, log in to
+   Copilot Money at app.copilot.money in one of the supported browsers and
+   try again.
 
 5. **Schedule it twice a week with launchd** (macOS's native scheduler —
    more reliable than cron for this, since it survives sleep/wake better):
@@ -108,8 +123,9 @@ needed.
 ## How it works
 
 Each run (`src/index.js`):
-1. Calls `copilot-money-mcp`'s `get_holdings` tool (local cache, no
-   network) via `src/copilot.js`.
+1. Calls `copilot-money-mcp`'s `get_holdings_live` and `get_accounts_live`
+   tools (`--live-reads` mode) via `src/copilot.js`, and joins account
+   names onto each holding.
 2. Classifies each position's leverage factor and computes totals
    (`src/portfolio.js`, `src/leverage.js`).
 3. Compares the total to the last recorded value in `data/history.json`
@@ -123,10 +139,13 @@ Each run (`src/index.js`):
 - **Mac-only, and only while the Mac is awake.** Unlike a GitHub
   Actions-based tracker, a missed run (Mac asleep/off) doesn't
   automatically retry.
+- **Needs a logged-in browser session.** If you log out of Copilot Money
+  everywhere, or your browser session expires, `npm start` will fail until
+  you log back in at app.copilot.money.
 - **Whatever Copilot Money itself can see.** If an account isn't linked in
   Copilot, or hasn't synced recently, its holdings won't show up here
-  either. Open the app periodically to keep the cache fresh.
+  either.
 - `copilot-money-mcp` is an independent, community-maintained project, not
   officially affiliated with Copilot Money. It could break if Copilot
-  changes its local cache format — if `npm start` starts failing, check
-  for an update: `npm update copilot-money-mcp`.
+  changes its GraphQL API — if `npm start` starts failing, check for an
+  update: `npm update copilot-money-mcp`.
