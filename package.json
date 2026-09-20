@@ -1,7 +1,7 @@
 {
   "name": "leverage-and-investments-tracker",
   "version": "1.0.0",
-  "description": "Tracks manually-entered holdings across brokerage accounts and emails a portfolio value + blended leverage snapshot twice a week.",
+  "description": "Reads real portfolio holdings from Copilot Money's local cache and emails a portfolio value + blended leverage snapshot twice a week. Runs locally (launchd), not in the cloud.",
   "type": "module",
   "private": true,
   "scripts": {
@@ -9,7 +9,8 @@
     "send": "node src/index.js"
   },
   "dependencies": {
-    "axios": "^1.7.9",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "copilot-money-mcp": "^2.3.0",
     "dotenv": "^16.4.5",
     "nodemailer": "^10.0.1"
   }

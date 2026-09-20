@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.leverage-tracker</string>
+
+  <!--
+    Replace both paths below:
+    - ProgramArguments[0]: absolute path to `node`. Find it with `which node`.
+    - ProgramArguments[1] and WorkingDirectory: absolute path to this repo
+      on your Mac (e.g. /Users/yourname/Leverage-and-Investments-Tracker).
+    launchd does not inherit your shell's PATH, so these must be absolute.
+  -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/Users/yourname/Leverage-and-Investments-Tracker/src/index.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/yourname/Leverage-and-Investments-Tracker</string>
+
+  <!-- Monday and Thursday at 9:00 AM local time. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Weekday</key>
+      <integer>1</integer>
+      <key>Hour</key>
+      <integer>9</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key>
+      <integer>4</integer>
+      <key>Hour</key>
+      <integer>9</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/leverage-tracker.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/leverage-tracker.error.log</string>
+</dict>
+</plist>
