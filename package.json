@@ -1,0 +1,16 @@
+{
+  "name": "leverage-and-investments-tracker",
+  "version": "1.0.0",
+  "description": "Tracks manually-entered holdings across brokerage accounts and emails a portfolio value + blended leverage snapshot twice a week.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "send": "node src/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.5",
+    "nodemailer": "^10.0.1"
+  }
+}
