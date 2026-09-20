@@ -58,8 +58,11 @@ export async function getHoldingsFromCopilot() {
       );
     }
 
+    // get_accounts_live rows key on `id`, not `account_id` (unlike
+    // get_holdings_live, which uses `account_id` for the same account) —
+    // the two live tools don't share field naming here.
     const accountNameById = new Map(
-      (accountsResult.accounts ?? []).map((a) => [a.account_id, a.name])
+      (accountsResult.accounts ?? []).map((a) => [a.id, a.name])
     );
 
     return holdingsResult.holdings.map((h) => ({
