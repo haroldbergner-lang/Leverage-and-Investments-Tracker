@@ -7,9 +7,11 @@ const fmtDelta = (n) => {
 };
 
 function positionRow(p) {
-  const tag = p.leveraged
-    ? `<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600;">${p.factor > 0 ? p.factor + 'x' : p.factor + 'x inverse'}</span>`
-    : '';
+  const tag = p.unclassified
+    ? `<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;">unclassified</span>`
+    : p.leveraged
+      ? `<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600;">${p.factor > 0 ? p.factor + 'x' : p.factor + 'x inverse'}</span>`
+      : '';
   return `
     <tr>
       <td style="padding:8px 0;color:#374151;">
@@ -21,8 +23,15 @@ function positionRow(p) {
 }
 
 export function renderEmail({ portfolio, previousEntry, date }) {
-  const { positions, cashValue, totalValue, leverageRatio, leveragedValue, leveragedShare } =
-    portfolio;
+  const {
+    positions,
+    cashValue,
+    totalValue,
+    leverageRatio,
+    leveragedValue,
+    leveragedShare,
+    unclassifiedValue,
+  } = portfolio;
 
   const deltaHtml =
     previousEntry != null
@@ -44,6 +53,16 @@ export function renderEmail({ portfolio, previousEntry, date }) {
       ? `<p style="margin:16px 0 0;padding:12px;background:#fef3c7;border-radius:6px;color:#92400e;font-size:13px;">
            No investment positions found in Copilot's local cache. Open the Copilot Money app,
            browse to the Investments tab, and make sure it has synced.
+         </p>`
+      : '';
+
+  const unclassifiedWarning =
+    unclassifiedValue > 0
+      ? `<p style="margin:16px 0 0;padding:12px;background:#fef3c7;border-radius:6px;color:#92400e;font-size:13px;">
+           ${fmt(unclassifiedValue)} of this total is from an account where Copilot's live API
+           reports a balance but no per-holding detail. It's counted at 1x (unleveraged) below
+           since its actual composition is unknown — check that account directly if it might
+           hold leveraged funds.
          </p>`
       : '';
 
@@ -71,6 +90,7 @@ export function renderEmail({ portfolio, previousEntry, date }) {
       ${cashRow}
     </table>
     ${noPositionsWarning}
+    ${unclassifiedWarning}
     <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>`;
 

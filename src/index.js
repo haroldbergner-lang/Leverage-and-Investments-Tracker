@@ -18,8 +18,14 @@ async function main() {
   console.log(
     `In leveraged products: $${portfolio.leveragedValue.toFixed(2)} (${(portfolio.leveragedShare * 100).toFixed(1)}%)`
   );
+  if (portfolio.unclassifiedValue > 0) {
+    console.log(
+      `WARNING: $${portfolio.unclassifiedValue.toFixed(2)} is unclassified — Copilot reports an account balance with no per-holding detail. Counted at 1x.`
+    );
+  }
   for (const p of portfolio.positions) {
-    console.log(`  ${p.symbol} (${p.account}): $${p.value.toFixed(2)}${p.leveraged ? ` [${p.factor}x]` : ''}`);
+    const tag = p.unclassified ? ' [unclassified]' : p.leveraged ? ` [${p.factor}x]` : '';
+    console.log(`  ${p.symbol} (${p.account}): $${p.value.toFixed(2)}${tag}`);
   }
 
   await sendEmail({

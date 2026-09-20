@@ -48,8 +48,8 @@ export async function getHoldingsFromCopilot() {
 
   try {
     const [holdingsResult, accountsResult] = await Promise.all([
-      callLive(client, 'get_holdings_live', { limit: 10000 }),
-      callLive(client, 'get_accounts_live', { limit: 10000 }),
+      callLive(client, 'get_holdings_live', { include_hidden: true, limit: 10000 }),
+      callLive(client, 'get_accounts_live', { include_hidden: true, limit: 10000 }),
     ]);
 
     if (!Array.isArray(holdingsResult.holdings)) {
@@ -58,18 +58,67 @@ export async function getHoldingsFromCopilot() {
       );
     }
 
+    const accounts = accountsResult.accounts ?? [];
+
     // get_accounts_live rows key on `id`, not `account_id` (unlike
     // get_holdings_live, which uses `account_id` for the same account) —
     // the two live tools don't share field naming here.
-    const accountNameById = new Map(
-      (accountsResult.accounts ?? []).map((a) => [a.id, a.name])
-    );
+    const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
 
-    return holdingsResult.holdings.map((h) => ({
+    const holdings = holdingsResult.holdings.map((h) => ({
       ...h,
       account_name: accountNameById.get(h.account_id) ?? h.account_id,
     }));
+
+    return [...holdings, ...unaccountedBalanceHoldings(accounts, holdings)];
   } finally {
     await client.close();
   }
+}
+
+// get_holdings_live has a confirmed gap: for at least one investment account
+// (a UTMA, observed directly), it returns zero rows even though that same
+// account has a real, current, non-hidden balance in get_accounts_live,
+// synced on the same connection as sibling accounts whose holdings resolve
+// fine. Silently trusting get_holdings_live alone would under-report the
+// portfolio by the full value of any account it fails on.
+//
+// To avoid that, reconcile: for every non-hidden, non-closed investment
+// account, compare its live balance to the sum of institution_value across
+// the holdings returned for it. Any unaccounted balance becomes a
+// synthetic "Unclassified holdings" line so it's included in totals and
+// clearly flagged, instead of silently dropped. It defaults to 1x
+// (unleveraged) — its true composition is unknown.
+function unaccountedBalanceHoldings(accounts, holdings) {
+  const holdingsValueByAccountId = new Map();
+  for (const h of holdings) {
+    const value = h.institution_value ?? 0;
+    holdingsValueByAccountId.set(
+      h.account_id,
+      (holdingsValueByAccountId.get(h.account_id) ?? 0) + value
+    );
+  }
+
+  const UNACCOUNTED_THRESHOLD = 1; // ignore sub-dollar rounding noise
+
+  return accounts
+    .filter((a) => (a.type ?? '').toLowerCase() === 'investment')
+    .filter((a) => !a.isUserHidden && !a.isUserClosed)
+    .map((a) => {
+      const balance = a.balance ?? 0;
+      const accounted = holdingsValueByAccountId.get(a.id) ?? 0;
+      return { account: a, gap: balance - accounted };
+    })
+    .filter(({ gap }) => gap > UNACCOUNTED_THRESHOLD)
+    .map(({ account, gap }) => ({
+      ticker_symbol: null,
+      name: 'Unclassified holdings',
+      account_id: account.id,
+      account_name: account.name,
+      quantity: null,
+      institution_price: null,
+      institution_value: gap,
+      is_cash_equivalent: false,
+      unclassified: true,
+    }));
 }

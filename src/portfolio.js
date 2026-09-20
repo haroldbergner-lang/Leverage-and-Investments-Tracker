@@ -11,7 +11,7 @@ export async function computePortfolio() {
       const absFactor = Math.abs(factor);
       const value = h.institution_value ?? 0;
       return {
-        symbol: h.ticker_symbol ?? '(unknown)',
+        symbol: h.unclassified ? 'Unclassified' : (h.ticker_symbol ?? '(unknown)'),
         name: h.name,
         account: h.account_name,
         quantity: h.quantity,
@@ -21,6 +21,7 @@ export async function computePortfolio() {
         underlying: underlyingFor(h.ticker_symbol),
         leveraged: absFactor > 1,
         notional: value * absFactor,
+        unclassified: Boolean(h.unclassified),
       };
     });
 
@@ -31,6 +32,9 @@ export async function computePortfolio() {
   const positionsValue = positions.reduce((sum, p) => sum + p.value, 0);
   const positionsNotional = positions.reduce((sum, p) => sum + p.notional, 0);
   const leveragedValue = positions.filter((p) => p.leveraged).reduce((sum, p) => sum + p.value, 0);
+  const unclassifiedValue = positions
+    .filter((p) => p.unclassified)
+    .reduce((sum, p) => sum + p.value, 0);
 
   const totalValue = positionsValue + cashValue;
   const totalNotional = positionsNotional + cashValue;
@@ -41,6 +45,7 @@ export async function computePortfolio() {
     totalValue,
     totalNotional,
     leveragedValue,
+    unclassifiedValue,
     leverageRatio: totalValue > 0 ? totalNotional / totalValue : 0,
     leveragedShare: totalValue > 0 ? leveragedValue / totalValue : 0,
   };

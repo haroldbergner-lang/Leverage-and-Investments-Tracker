@@ -40,6 +40,27 @@ recurring job. The script talks to `copilot-money-mcp` directly over the
 chat client would use), formats the result, and emails it — no LLM
 inference happens on your portfolio data during a scheduled run.
 
+## Handling gaps in Copilot's live holdings data
+
+`copilot-money-mcp`'s `get_holdings_live` tool has a confirmed gap: for at
+least one investment account (a UTMA, observed directly), it returns zero
+holding rows even though that same account has a real, current, non-hidden
+balance in `get_accounts_live` — on the same connection as sibling accounts
+whose holdings resolve fine. If this project trusted `get_holdings_live`
+alone, that account's entire value would silently disappear from your
+portfolio total.
+
+Instead, `src/copilot.js` reconciles: for every non-hidden, non-closed
+investment account, it compares the account's live balance to the sum of
+its returned holdings. Any unaccounted-for balance is added as a synthetic
+**"Unclassified holdings"** line, counted at 1x (unleveraged, since its
+real composition is unknown), and flagged with a warning in both the
+console output and the email. This keeps the total accurate without
+pretending to know something the API didn't return. If you see this
+warning, it's worth checking that account directly in Copilot, and
+consider filing the gap with
+[`copilot-money-mcp`'s issue tracker](https://github.com/ignaciohermosillacornejo/copilot-money-mcp/issues).
+
 ## What "leverage" means here
 
 You don't use margin — the leverage here comes from **leveraged ETFs**
